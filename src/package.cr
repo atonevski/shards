@@ -80,15 +80,20 @@ module Shards
           source = File.join(resolver.install_path, "bin", name)
           destination = File.join(Shards.bin_path, name)
 
-          {% if flag?(:windows) %}
-            FileUtils.cp(source, destination)
-          {% else %}
-            if File.exists?(destination)
-              next if File.stat(destination).ino == File.stat(source).ino
-              File.delete(destination)
-            end
+          if File.exists?(destination)
+            next if File.stat(destination).ino == File.stat(source).ino
+            File.delete(destination)
+          end
+
+          begin
             File.link(source, destination)
-          {% end %}
+          rescue Errno : ex
+            if ex.errno == Errno::EPERM
+              FileUtils.cp(source, destination)
+            else
+              raise ex
+            end
+          end
         end
       end
     end
